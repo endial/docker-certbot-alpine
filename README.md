@@ -1,4 +1,5 @@
 # Let's Encrypt Alpine
+
 基于的 Alpine 系统的 Docker 镜像，用于提供获取 Let's Encrypt 提供的SSL证书的服务。
 
 
@@ -10,11 +11,11 @@
 
 
 
+
 ## 数据卷
 
 ```
 /etc/letsencrypt: 用于存放获取到的SSL证书
-/var/lib/letsencrypt
 ```
 
 证书说明：
@@ -28,13 +29,6 @@
 
 
 
-## 参数说明
-
-```
- 
-```
-
-
 
 ## 使用说明
 
@@ -43,6 +37,11 @@
 - me@myort.org：用于域名管理的个人邮箱，需要修改为自己的常用邮箱
 - www.myorg.org：需要申请SSL证书的域名
 - blog.myorg.org：需要申请SSL证书的子域名
+
+
+
+
+### Standalone方式申请证书
 
 生成并运行一个新的容器（Standalone方式，不建议）：
 
@@ -58,28 +57,49 @@ docker run -it --rm \
     -d blog.myorg.org
 ```
 
-注意：使用Standalone方式时，需要确保防火墙对应的端口已经打开。
+注意：使用Standalone方式时，需要确保防火墙对应的端口已经打开。同时，需要保证80端口未被占用（没有运行中的Nginx或Apache）。
 
 
+
+### Webroot方式申请证书
 
 生成并运行一个新的容器（Webroot方式，建议）：
 
 ```
 docker run -it --rm \
-	-v /etc/letsencrypt:/etc/letsencrypt \
-	-v /srv/www/:/srv/www endial/certbot-alpine \
-		certonly --webroot \
-		--agree-tos \
-		-m me@myorg.org \
-		-w /var/www \
-		-d www.myorg.org \
-		-d blog.myorg.org \
-		-w /var/www/webmail \
-		-d webmail.myorg.org \
-		-d mail.myorg.org
+    -v /etc/letsencrypt:/etc/letsencrypt \
+    -v /srv/www/:/srv/www endial/certbot-alpine \
+    certonly --webroot \
+    --agree-tos \
+    -m me@myorg.org \
+    -w /var/www \
+    -d www.myorg.org \
+    -d blog.myorg.org \
+    -w /var/www/webmail \
+    -d webmail.myorg.org \
+    -d mail.myorg.org
 ```
 
+注意：使用Webroot方式时，需要确保对应站点的Nginx中已经增加相应的认证路径配置。
 
+使用Webroot方式时，Nginx配置文件需要增加的配置内容(在server配置中增加)：
+```
+    # add for Let's Encrypt
+    location ^~ /.well-known/acme-challenge/ {
+        default_type "text/plain";
+        root /srv/www/challenges/;
+    }
+
+    location = /.well-known/acme-challenge/ {
+        return 404;
+    }
+```
+
+同时，需要保证路径`/srv/www/challenges/`存在，并且Nginx运行时的用户具备读写权限。
+
+
+
+### Webroot方式申请证书（使用通用数据卷）
 
 生成并运行一个新的容器（使用 endial/dvc-alpine 提供的数据卷）：
 
@@ -89,12 +109,21 @@ docker run -it --rm \
     certonly --webroot \
     --agree-tos \
     -m me@myorg.org \
-		-w /srv/www \
-		-d www.myorg.org \
-		-d blog.myorg.org \
-		-d webmail.myorg.org \
-		-d mail.myorg.org
+    -w /srv/www \
+    -d www.myorg.org \
+    -d blog.myorg.org \
+    -d webmail.myorg.org \
+    -d mail.myorg.org
 ```
+
+
+
+### 证书更新
+```
+docker run -it --rm --volumes-from dvc endial/certbot-alpine renew
+```
+
+可将以上命令存储为bash脚本，并周期执行。需要注意，更新证书后，需要重启Nginx以重新加载证书。
 
 
 
