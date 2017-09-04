@@ -5,7 +5,7 @@
 
 ## 基本信息
 
-* 镜像地址：endial/letsencrypt-alpine:v0.17
+* 镜像地址：endial/certbot-alpine
 * 依赖镜像：endial/base-alpine:v3.6
 
 
